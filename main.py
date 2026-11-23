@@ -1,11 +1,30 @@
 import os
 import time
 import json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import yfinance as yf
 import pandas as pd
 import requests
 from datetime import datetime
 import pytz
+
+# --- RENDER PORT FIX - Web Service ko port chahiye hota hai ---
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Gold Bot is Running")
+    def log_message(self, format, *args):
+        return
+
+def keep_alive():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    print(f"Keep-alive server started on port {port}")
+
+keep_alive()
 
 # --- SETTINGS ---
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
