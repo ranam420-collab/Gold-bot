@@ -4,18 +4,20 @@ import requests
 import yfinance as yf
 import pandas as pd
 from threading import Thread
-from flask import Flask
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# --- RENDER PORT FIX ---
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Gold Bot is Live!"
+# --- PORT FIX - NO FLASK NEEDED ---
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Gold Bot is Live!")
+    def log_message(self, *args):
+        pass
 
 def keep_alive():
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
 
 # --- TELEGRAM ---
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -44,21 +46,17 @@ def check_gold():
         prev = df.iloc[-2]
         price = float(last['Close'])
         print(f"Price: {price} EMA50: {float(last['EMA50']):.2f} EMA200: {float(last['EMA200']):.2f}")
-
-        # BUY Signal
         if float(last['EMA50']) > float(last['EMA200']) and float(prev['EMA50']) <= float(prev['EMA200']):
             send_telegram(f"🟢 GOLD BUY SIGNAL\nPrice: {price}\nEMA50 > EMA200 Cross\nSL: {price-15:.2f} TP: {price+30:.2f}")
-        # SELL Signal
         elif float(last['EMA50']) < float(last['EMA200']) and float(prev['EMA50']) >= float(prev['EMA200']):
             send_telegram(f"🔴 GOLD SELL SIGNAL\nPrice: {price}\nEMA50 < EMA200 Cross\nSL: {price+15:.2f} TP: {price-30:.2f}")
     except Exception as e:
         print(f"Gold Check Error: {e}")
 
-# --- START ---
 if __name__ == "__main__":
     Thread(target=keep_alive, daemon=True).start()
     print("Keep-alive server started")
     send_telegram("🤖 Gold Bot Restarted - New Rules Active ✅")
     while True:
         check_gold()
-        time.sleep(300)  # 5 minute
+        time.sleep(300)
